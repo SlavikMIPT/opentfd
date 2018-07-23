@@ -1,3 +1,4 @@
+import subprocess
 from datetime import timedelta
 
 import socks
@@ -7,7 +8,6 @@ from telethon import events
 import secret
 
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash).start()
-
 last_msg = None
 break_date = None
 
