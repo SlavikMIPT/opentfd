@@ -1,15 +1,48 @@
-import subprocess
 from datetime import timedelta
 
-import socks
+import mtranslate
 from telethon import TelegramClient
 from telethon import events
 
 import secret
 
+supported_langs = {'Afrikaans': 'af', 'Irish': 'ga', 'Albanian': 'sq', 'Italian': 'it', 'Arabic': 'ar',
+                   'Japanese': 'ja',
+                   'Azerbaijani': 'az', 'Kannada': 'kn', 'Basque': 'eu', 'Korean': 'ko', 'Bengali': 'bn', 'Latin': 'la',
+                   'Belarusian': 'be',
+                   'Latvian': 'lv', 'Bulgarian': 'bg', 'Lithuanian': 'lt', 'Catalan': 'ca', 'Macedonian': 'mk',
+                   'Chinese Simplified': 'zh-CN', 'Malay': 'ms', 'Chinese Traditional': 'zh-TW', 'Maltese': 'mt',
+                   'Croatian': 'hr', 'Norwegian': 'no', 'Czech': 'cs', 'Persian': 'fa', 'Danish': 'da', 'Polish': 'pl',
+                   'Dutch': 'nl', 'Portuguese': 'pt', 'English': 'en', 'Romanian': 'ro', 'Esperanto': 'eo',
+                   'Russian': 'ru',
+                   'Estonian': 'et', 'Serbian': 'sr', 'Filipino': 'tl', 'Slovak': 'sk', 'Finnish': 'fi',
+                   'Slovenian': 'sl',
+                   'French': 'fr', 'Spanish': 'es', 'Galician': 'gl', 'Swahili': 'sw', 'Georgian': 'ka',
+                   'Swedish': 'sv',
+                   'German': 'de', 'Tamil': 'ta', 'Greek': 'el', 'Telugu': 'te', 'Gujarati': 'gu', 'Thai': 'th',
+                   'Haitian Creole': 'ht', 'Turkish': 'tr', 'Hebrew': 'iw', 'Ukrainian': 'uk', 'Hindi': 'hi',
+                   'Urdu': 'ur',
+                   'Hungarian': 'hu', 'Vietnamese': 'vi', 'Icelandic': 'is', 'Welsh': 'cy', 'Indonesian': 'id',
+                   'Yiddish': 'yi'}
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash).start()
 last_msg = None
 break_date = None
+translated = mtranslate.translate('Тест', 'en', 'auto')
+print(translated)
+
+
+@client.on(events.Raw())
+async def typing_handler(event):
+    drafts = await  client.get_drafts()
+    for draft in drafts:
+        if draft.is_empty:
+            continue
+        text = str(draft.text)
+        for lang_code in supported_langs.values():
+            if text.endswith('/{0}'.format(lang_code)):
+                translated = mtranslate.translate(text[:-(len(lang_code)+1)], lang_code, 'auto')
+                await draft.set_message(text=translated)
+        print(draft.text)
 
 
 @client.on(events.NewMessage(incoming=True))
