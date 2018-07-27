@@ -1,5 +1,6 @@
 # OpenTFD
 Merges serial Telegram messages, if between them a pause of less than 30 seconds
+Integrated google translator
 
 opentfd-win-noproxy.exe - windows daemon without proxy
 opentfd-win-proxy.exe - windows daemon with proxy
