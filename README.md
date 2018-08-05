@@ -13,3 +13,6 @@ http://telethon.readthedocs.io/en/stable/
 
 Translator:
 https://github.com/mouuff/mtranslate.git
+
+Telegram канал разработчика 
+t.me/MediaTube_stream
