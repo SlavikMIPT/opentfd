@@ -15,4 +15,4 @@ Translator:
 https://github.com/mouuff/mtranslate.git
 
 Telegram канал разработчика 
-t.me/MediaTube_stream
+https://t.me/MediaTube_stream
