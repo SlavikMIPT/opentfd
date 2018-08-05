@@ -10,3 +10,6 @@ opentfd.service - template of linux systemd service for 24/7 execution on VDS
 
 requires latest version of Telethon
 http://telethon.readthedocs.io/en/stable/
+
+Translator:
+https://github.com/mouuff/mtranslate.git
