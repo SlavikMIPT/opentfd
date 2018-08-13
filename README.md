@@ -19,5 +19,6 @@
 * Latest version of Telethon: http://telethon.readthedocs.io/en/stable/
 * Translator: https://github.com/mouuff/mtranslate.git
 
-Telegram канал разработчика 
+Follow author and contributors at Telegram:
 https://t.me/MediaTube_stream
+https://t.me/nastalo
