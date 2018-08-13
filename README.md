@@ -8,7 +8,6 @@
 * opentfd-ubuntu-noproxy - ubunti daemon without proxy
 ### Scripts
 * opentfd.service - template of linux systemd service for 24/7 execution on VDS
-* Dockerfile
 
 ### For non-compiled versions
 1. `pip3 install reqirements.txt`
