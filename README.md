@@ -12,7 +12,7 @@
 
 ### For non-compiled versions
 1. `pip3 install reqirements.txt`
-2. Add (API token and hash)[https://core.telegram.org/api/obtaining_api_id] to secret.template.py and rename it to secret.py
+2. Add [API token and hash](https://core.telegram.org/api/obtaining_api_id) to secret.template.py and rename it to secret.py
 3. `python3 opentfd.py`
 
 ### Requirements
