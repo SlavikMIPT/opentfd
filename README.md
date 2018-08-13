@@ -20,5 +20,5 @@
 * Translator: https://github.com/mouuff/mtranslate.git
 
 Follow author and contributors at Telegram:
-https://t.me/MediaTube_stream
-https://t.me/nastalo
+* https://t.me/MediaTube_stream
+* https://t.me/nastalo
