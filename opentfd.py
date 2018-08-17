@@ -1,4 +1,5 @@
 from datetime import timedelta
+from contextlib import suppress
 
 import mtranslate
 from telethon import TelegramClient, events
@@ -66,7 +67,7 @@ async def break_updater(event):
 async def merger(event):
     global last_msg
     global break_date
-    try:
+    with suppress(Exception):
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
@@ -86,8 +87,6 @@ async def merger(event):
                 last_msg = event
         else:
             last_msg = event
-    except Exception:
-        pass
 
 
 client.run_until_disconnected()
