@@ -1,6 +1,6 @@
 # OpenTFD
 * Merges serial Telegram messages, if between them a pause of less than 30 seconds
-* Integrated Google translator
+* Integrated Google translator (just put /en in end of message to translate to english or /ru to translate to russian). Full list of supported languages you can see in supported_langs at opentfd.py
 
 You can find compiled versions on [releases](https://github.com/kotwizkiy/opentfd/releases)
 
