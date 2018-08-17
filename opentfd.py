@@ -47,6 +47,9 @@ async def translator(event):
         if text[-3] == '/' and text[-2:] in list(supported_langs.values()):
             translated = mtranslate.translate(text[:-2], lang_code, 'auto')
             await draft.set_message(text=translated)
+        if text[-6] == '/' and text[-5:] in list(supported_langs.values()):
+            translated = mtranslate.translate(text[:-5], lang_code, 'auto')
+            await draft.set_message(text=translated)
 
 
 @client.on(events.NewMessage(incoming=True))
