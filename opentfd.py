@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 
 import mtranslate
@@ -26,18 +27,28 @@ translated = mtranslate.translate('Тест', 'en', 'auto')
 print(translated)
 
 
+async def run_command_shell(cmd):
+    process = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    results = await process.communicate()
+    return ''.join(x.decode() for x in results)
+
+
 @client.on(events.Raw())
 async def typing_handler(event):
-    drafts = await  client.get_drafts()
+    drafts = await client.get_drafts()
     for draft in drafts:
         if draft.is_empty:
             continue
         text = str(draft.text)
         for lang_code in supported_langs.values():
             if text.endswith('/{0}'.format(lang_code)):
-                translated = mtranslate.translate(text[:-(len(lang_code)+1)], lang_code, 'auto')
+                translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
                 await draft.set_message(text=translated)
-        print(draft.text)
+        # print(draft.text)
 
 
 @client.on(events.NewMessage(incoming=True))
@@ -53,11 +64,21 @@ async def inc_handler(event):
                 break_date = event.date
 
 
+@client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
+async def bash(e):
+    cmd = e.pattern_match.group(1)
+    print(cmd)
+    await e.edit(await run_command_shell(cmd))
+
+
 @client.on(events.NewMessage(outgoing=True))
 async def out_handler(event):
     global last_msg
     global break_date
     try:
+        if event.text:
+            if event.text.startswith('!bash'):
+                return
         if event.media or event.fwd_from or event.via_bot_id or event.reply_to_msg_id or event.reply_markup:
             last_msg = None
         elif last_msg is None:
