@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import asyncio
 from datetime import timedelta
 from contextlib import suppress
 
@@ -39,6 +39,16 @@ last_msg = None
 break_date = None
 
 
+async def run_command_shell(cmd):
+    process = await asyncio.create_subprocess_shell(
+        cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    results = await process.communicate()
+    return ''.join(x.decode() for x in results)
+
+
 @client.on(events.Raw())
 async def translator(event):
     drafts = await client.get_drafts()
@@ -46,12 +56,11 @@ async def translator(event):
         if draft.is_empty:
             continue
         text = str(draft.text)
-        if text[-3] == '/' and text[-2:] in list(supported_langs.values()):
-            translated = mtranslate.translate(text[:-2], lang_code, 'auto')
-            await draft.set_message(text=translated)
-        if text[-6] == '/' and text[-5:] in list(supported_langs.values()):
-            translated = mtranslate.translate(text[:-5], lang_code, 'auto')
-            await draft.set_message(text=translated)
+        for lang_code in supported_langs.values():
+            if text.endswith('/{0}'.format(lang_code)):
+                translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
+                await draft.set_message(text=translated)
+        # print(draft.text)
 
 
 @client.on(events.NewMessage(incoming=True))
@@ -66,6 +75,13 @@ async def break_updater(event):
         except Exception:
             if event.to_id == last_msg.to_id:
                 break_date = event.date
+
+
+@client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
+async def bash(e):
+    cmd = e.pattern_match.group(1)
+    print(cmd)
+    await e.edit(await run_command_shell(cmd))
 
 
 @client.on(events.NewMessage(outgoing=True))
