@@ -1,18 +1,22 @@
 # OpenTFD
-* Merges serial Telegram messages, if between them a pause of less than 30 seconds
-* Integrated google translator
-### Compiled
-* opentfd-win-noproxy.exe - windows daemon without proxy
-* opentfd-win-proxy.exe - windows daemon with proxy
-* opentfd-linux-noproxy - linux daemon without proxy
-* opentfd-ubuntu-noproxy - ubunti daemon without proxy
+* Merges series of Telegram messages if there is a pause of less than 30 seconds between them
+* Integrated Google Translator (just put /en in the end of message to translate into English or /ru to translate into russian). Full list of supported languages you can see in supported_langs at opentfd.py
+
+
+Compiled versions is on [releases of this repo](https://github.com/kotwizkiy/opentfd/releases)
+
+### Scripts
 * opentfd.service - template of linux systemd service for 24/7 execution on VDS
 
-requires latest version of Telethon
-http://telethon.readthedocs.io/en/stable/
+### For non-compiled versions
+1. `pip3 install reqirements.txt`
+2. Add [API token and hash](https://core.telegram.org/api/obtaining_api_id) to secret.template.py and rename it to secret.py
+3. `python3 opentfd.py`
 
-Translator:
-https://github.com/mouuff/mtranslate.git
+### Dependencies
+* Latest version of Telethon: http://telethon.readthedocs.io/en/stable/
+* Translator: https://github.com/mouuff/mtranslate.git
 
-Telegram канал разработчика 
-https://t.me/MediaTube_stream
+Follow author and contributors at Telegram:
+* https://t.me/MediaTube_stream
+* https://t.me/nastalo
