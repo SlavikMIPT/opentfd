@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import asyncio
 from datetime import timedelta
+from time import time
 from contextlib import suppress
 
 import mtranslate
 from telethon import TelegramClient, events
 
 import secret
+import re
 
 supported_langs = {'Afrikaans': 'af', 'Irish': 'ga', 'Albanian': 'sq',
                    'Italian': 'it', 'Arabic': 'ar', 'Japanese': 'ja',
@@ -38,15 +40,45 @@ client = TelegramClient(
 last_msg = None
 break_date = None
 
-
-async def run_command_shell(cmd):
+async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
         cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
-    results = await process.communicate()
-    return ''.join(x.decode() for x in results)
+    msg_text = ''
+    msg_text_old = ''
+    lines_count = 0
+    lines_max = 10
+    last_update_time = 0
+    start_time = time()
+    msg_lines = []
+    while time() - start_time <= 30:
+        data = await process.stdout.readline()
+        line = data.decode("ascii").strip()
+        msg_lines.append(line)
+        if line == '' and not await process.communicate():
+            break
+        print(line)
+        msg_lines = msg_lines[-lines_max:]
+        # if lines_count <= 10:
+        msg_text = ''
+        for ln in msg_lines:
+            msg_text += f'${ln}\n'
+        current_time = time()
+        if current_time - last_update_time >= 1:
+            last_update_time = current_time
+            with suppress(Exception):
+                if not msg_text_old == msg_text:
+                    await e.edit(msg_text)
+                    msg_text_old = msg_text
+                    # await e.edit(msg_text)
+                # last_update_time = time()
+    msg_text += '$-----TERMINATED-----\n'
+    await e.edit(msg_text)
+    return await process.kill()
+    # results = await process.communicate()
+    # return ''.join(x.decode() for x in results)
 
 
 @client.on(events.Raw())
@@ -81,7 +113,11 @@ async def break_updater(event):
 async def bash(e):
     cmd = e.pattern_match.group(1)
     print(cmd)
-    await e.edit(await run_command_shell(cmd))
+    # Wait for at most 1 second
+    try:
+        await asyncio.wait_for(run_command_shell(cmd, e), timeout=60.0)
+    except asyncio.TimeoutError:
+        print('timeout!')
 
 
 @client.on(events.NewMessage(outgoing=True))
