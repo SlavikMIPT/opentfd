@@ -89,6 +89,9 @@ async def merger(event):
     global last_msg
     global break_date
     with suppress(Exception):
+        if event.text:
+            if event.text.startswith('!bash'):
+                return
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
