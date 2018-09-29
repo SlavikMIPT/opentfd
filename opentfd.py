@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 from datetime import timedelta
-from time import time
+from time import time, sleep
 from contextlib import suppress
 
 import mtranslate
@@ -48,32 +48,47 @@ async def run_command_shell(cmd, e):
     )
     msg_text = ''
     msg_text_old = ''
-    lines_count = 0
-    lines_max = 10
+    blank_lines_count = 0
+    lines_max = 20
     last_update_time = 0
     start_time = time()
     msg_lines = []
+    await asyncio.sleep(1)
     while time() - start_time <= 30:
-        data = await process.stdout.readline()
-        line = data.decode("ascii").strip()
-        msg_lines.append(line)
-        if line == '' and not await process.communicate():
-            break
-        print(line)
+        for i in range(lines_max):
+            data = await process.stdout.readline()
+            line = data.decode().strip()
+            # results = await process.communicate()
+            # for data in results:
+            #     line = data.decode().rstrip()
+            if blank_lines_count <= 5:
+                if line == '':
+                    blank_lines_count += 1
+                if not line == '':
+                    blank_lines_count = 0
+                    msg_lines.append(line)
+            else:
+                break
+            #     if not await process.communicate():
+            #         break
+            #     else:
+            #         continue
+            # print(line)
         msg_lines = msg_lines[-lines_max:]
         # if lines_count <= 10:
         msg_text = ''
         for ln in msg_lines:
-            msg_text += f'${ln}\n'
-        current_time = time()
-        if current_time - last_update_time >= 1:
-            last_update_time = current_time
-            with suppress(Exception):
-                if not msg_text_old == msg_text:
-                    await e.edit(msg_text)
-                    msg_text_old = msg_text
-                    # await e.edit(msg_text)
-                # last_update_time = time()
+            msg_text += f'`${ln}`\n'
+        # current_time = time()
+        # if current_time - last_update_time >= 1:
+        with suppress(Exception):
+            if not msg_text_old == msg_text:
+                await e.edit(msg_text,parse_mode='Markdown')
+                msg_text_old = msg_text
+        await asyncio.sleep(5)
+        if blank_lines_count >= 5:
+            break
+
     msg_text += '$-----TERMINATED-----\n'
     await e.edit(msg_text)
     return await process.kill()
