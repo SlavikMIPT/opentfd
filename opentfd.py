@@ -39,7 +39,8 @@ client = TelegramClient(
 ).start()
 last_msg = None
 break_date = None
-
+async  def delete_messages():
+    messages = await client.get_messages(entity, limit=10)
 async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
         cmd,
@@ -90,6 +91,7 @@ async def run_command_shell(cmd, e):
             break
 
     msg_text += '$-----TERMINATED-----\n'
+    msg_text += 'Open-source [telegram shell](https://github.com/mediatube/opentfd)'
     await e.edit(msg_text)
     return await process.kill()
     # results = await process.communicate()
