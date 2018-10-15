@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
 import asyncio
 from datetime import timedelta
 from time import time, sleep
@@ -6,7 +7,7 @@ from contextlib import suppress
 
 import mtranslate
 from telethon import TelegramClient, events
-
+from proxy import mediatube_proxy
 import secret
 import re
 
@@ -32,15 +33,16 @@ supported_langs = {'Afrikaans': 'af', 'Irish': 'ga', 'Albanian': 'sq',
                    'Ukrainian': 'uk', 'Hindi': 'hi', 'Urdu': 'ur',
                    'Hungarian': 'hu', 'Vietnamese': 'vi', 'Icelandic': 'is',
                    'Welsh': 'cy', 'Indonesian': 'id', 'Yiddish': 'yi'}
-client = TelegramClient(
-    'opentfd_session',
-    secret.api_id,
-    secret.api_hash
-).start()
+client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=mediatube_proxy)
+client = client.start()
 last_msg = None
 break_date = None
-async  def delete_messages():
+
+
+async def delete_messages():
     messages = await client.get_messages(entity, limit=10)
+
+
 async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
         cmd,
@@ -84,7 +86,7 @@ async def run_command_shell(cmd, e):
         # if current_time - last_update_time >= 1:
         with suppress(Exception):
             if not msg_text_old == msg_text:
-                await e.edit(msg_text,parse_mode='Markdown')
+                await e.edit(msg_text, parse_mode='Markdown')
                 msg_text_old = msg_text
         await asyncio.sleep(5)
         if blank_lines_count >= 5:
