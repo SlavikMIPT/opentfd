@@ -33,8 +33,7 @@ supported_langs = {'Afrikaans': 'af', 'Irish': 'ga', 'Albanian': 'sq',
                    'Ukrainian': 'uk', 'Hindi': 'hi', 'Urdu': 'ur',
                    'Hungarian': 'hu', 'Vietnamese': 'vi', 'Icelandic': 'is',
                    'Welsh': 'cy', 'Indonesian': 'id', 'Yiddish': 'yi'}
-client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=mediatube_proxy)
-client = client.start()
+client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=mediatube_proxy).start()
 last_msg = None
 break_date = None
 
@@ -166,6 +165,8 @@ async def merger(event):
                 last_msg = event
         else:
             last_msg = event
-
-
+print("OpenTFD is running")
+print("Do not close this window")
+print("t.me/mediatube_stream")
+print("https://github.com/mediatube/opentfd")
 client.run_until_disconnected()
