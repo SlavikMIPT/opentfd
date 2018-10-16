@@ -100,8 +100,10 @@ async def translator(event):
 async def break_updater(event):
     global break_time
     global last_msg
-    if event.chat.bot:
-        return
+    with suppress(Exception):
+        if event.chat:
+            if event.chat.bot:
+                return
     if last_msg:
         try:
             if (event.message.to_id.user_id == last_msg.from_id and
