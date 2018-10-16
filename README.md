@@ -1,6 +1,7 @@
 # OpenTFD
 * Merges series of Telegram messages if there is a pause of less than 30 seconds between them
 * Integrated Google Translator (just put /en in the end of message to translate into English or /ru to translate into russian). Full list of supported languages you can see in supported_langs at opentfd.py
+* Bash assistant - type '!bash command' in any chat to execute command on your host
 
 Compiled versions is on [releases of this repo](https://github.com/SlavikMIPT/opentfd/releases/tag/win-proxy-1.2)
 

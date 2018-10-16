@@ -41,6 +41,11 @@ break_date = None
 merge_semaphore = asyncio.Semaphore(value=1)
 
 
+
+async def delete_messages():
+    messages = await client.get_messages(entity, limit=10)
+
+
 async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
         cmd,
@@ -170,8 +175,7 @@ async def merger(event):
                 last_msg = event
         else:
             last_msg = event
-
-
+            
 print("OpenTFD is running")
 print("Do not close this window")
 print("t.me/mediatube_stream")
