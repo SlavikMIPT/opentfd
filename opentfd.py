@@ -7,6 +7,8 @@ from contextlib import suppress
 
 import mtranslate
 from telethon import TelegramClient, events
+from telethon import sync
+from telethon.tl.types import UpdateDraftMessage
 from proxy import mediatube_proxy
 import secret
 import re
@@ -36,10 +38,7 @@ supported_langs = {'Afrikaans': 'af', 'Irish': 'ga', 'Albanian': 'sq',
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=mediatube_proxy).start()
 last_msg = None
 break_date = None
-
-
-async def delete_messages():
-    messages = await client.get_messages(entity, limit=10)
+merge_semaphore = asyncio.Semaphore(value=1)
 
 
 async def run_command_shell(cmd, e):
@@ -56,7 +55,7 @@ async def run_command_shell(cmd, e):
     start_time = time()
     msg_lines = []
     await asyncio.sleep(1)
-    while time() - start_time <= 30:
+    while time() - start_time <= 60:
         for i in range(lines_max):
             data = await process.stdout.readline()
             line = data.decode().strip()
@@ -99,18 +98,20 @@ async def run_command_shell(cmd, e):
     # return ''.join(x.decode() for x in results)
 
 
-@client.on(events.Raw())
+@client.on(events.Raw(types=UpdateDraftMessage))
 async def translator(event):
-    drafts = await client.get_drafts()
-    for draft in drafts:
+    for draft in await client.get_drafts():
         if draft.is_empty:
+            await draft.delete()
             continue
-        text = str(draft.text)
+        text = draft.text
         for lang_code in supported_langs.values():
             if text.endswith('/{0}'.format(lang_code)):
                 translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
-                await draft.set_message(text=translated)
-        # print(draft.text)
+                for i in range(3):
+                    await draft.set_message(text=translated)
+                    await asyncio.sleep(3)
+                return
 
 
 @client.on(events.NewMessage(incoming=True))
@@ -142,6 +143,7 @@ async def bash(e):
 async def merger(event):
     global last_msg
     global break_date
+    global merge_semaphore
     with suppress(Exception):
         if event.text:
             if event.text.startswith('!bash'):
@@ -157,14 +159,19 @@ async def merger(event):
                     last_msg = event
                     break_date = 0
             elif event.date - last_msg.date < timedelta(seconds=30):
-                last_msg = await last_msg.edit(
-                    '{0}\n{1}'.format(last_msg.text, event.text))
-                last_msg.date = event.date
-                await event.delete()
+                try:
+                    await merge_semaphore.acquire()
+                    last_msg = await last_msg.edit('{0}\n● {1}'.format(last_msg.text, event.text))
+                    last_msg.date = event.date
+                    await event.delete()
+                finally:
+                    merge_semaphore.release()
             else:
                 last_msg = event
         else:
             last_msg = event
+
+
 print("OpenTFD is running")
 print("Do not close this window")
 print("t.me/mediatube_stream")
