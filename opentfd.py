@@ -22,9 +22,6 @@ MERGE_TIMEOUT = 30
 merge_semaphore = asyncio.Semaphore(value=1)
 
 
-async def delete_messages():
-    messages = await client.get_messages(entity, limit=10)
-
 
 async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
@@ -132,13 +129,16 @@ async def merger(event):
     global break_time
     global last_msg_time
     global merge_semaphore
+
     event_time = time()
     with suppress(Exception):
         if event.text:
             if event.text.startswith('!bash'):
                 return
-        if event.chat.bot:
-            return
+        with suppress(Exception):
+            if event.chat:
+                if event.chat.bot:
+                    return
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
