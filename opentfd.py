@@ -1,13 +1,10 @@
-#!/usr/bin/env python3
-# -*- coding: UTF-8 -*-
 import asyncio
 from datetime import timedelta
 from time import time, sleep
 from contextlib import suppress
 
 import mtranslate
-from telethon import TelegramClient, events
-from telethon import sync
+from telethon import TelegramClient, events, sync, errors, custom
 from telethon.tl.types import UpdateDraftMessage
 from proxy import mediatube_proxy
 from supported_langs import supported_langs
@@ -20,7 +17,6 @@ break_time = None
 last_msg_time = time()
 MERGE_TIMEOUT = 30
 merge_semaphore = asyncio.Semaphore(value=1)
-
 
 
 async def run_command_shell(cmd, e):
@@ -81,7 +77,7 @@ async def run_command_shell(cmd, e):
 
 
 @client.on(events.Raw(types=UpdateDraftMessage))
-async def translator(event):
+async def translator(event: events.NewMessage.Event):
     for draft in await client.get_drafts():
         if draft.is_empty:
             await draft.delete()
@@ -96,8 +92,24 @@ async def translator(event):
                 return
 
 
+@client.on(events.NewMessage(pattern=r'^!type->.*', outgoing=True))
+async def typing_imitate(message: events.NewMessage.Event):
+    text, text_out = str(message.raw_text).split('->')[-1], str()
+    word = list(text)
+    for letter in word:
+        text_out += letter
+        try:
+            if word.index(letter) % 2 == 1:
+                await message.edit(f'`{text_out}`|')
+            else:
+                await message.edit(f'`{text_out}`')
+            await asyncio.sleep(0.2)
+        except errors.MessageNotModifiedError:
+            continue
+
+
 @client.on(events.NewMessage(incoming=True))
-async def break_updater(event):
+async def break_updater(event: events.NewMessage.Event):
     global break_time
     global last_msg
     with suppress(Exception):
@@ -115,7 +127,7 @@ async def break_updater(event):
 
 
 @client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
-async def bash(e):
+async def bash(e: events.NewMessage.Event):
     cmd = e.pattern_match.group(1)
     print(cmd)
     # Wait for at most 1 second
@@ -126,7 +138,7 @@ async def bash(e):
 
 
 @client.on(events.NewMessage(outgoing=True))
-async def merger(event):
+async def merger(event: custom.Message):
     global last_msg
     global break_time
     global last_msg_time
@@ -166,11 +178,13 @@ async def merger(event):
         else:
             last_msg = event
             last_msg_time = event_time
-print("OpenTFD is running")
-print("Do not close this window")
-print("t.me/mediatube_stream")
-print("https://github.com/mediatube/opentfd\n")
-print("Supported Languages")
-for key, val in supported_langs.items():
-    print(f'{key:<25}/{val}')
+
+
+final_credits = ["OpenTFD is running", "Do not close this window", "t.me/mediatube_stream",
+                 "https://github.com/mediatube/opentfd\n", "Supported languages:", ''
+                 ]
+
+print('\n'.join(final_credits))
+print('\n'.join([f'{k:<25}/{v}' for k, v in supported_langs.items()]))
 client.run_until_disconnected()
+
