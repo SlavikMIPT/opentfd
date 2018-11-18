@@ -96,16 +96,17 @@ async def translator(event: events.NewMessage.Event):
 async def typing_imitate(message: events.NewMessage.Event):
     text, text_out = str(message.raw_text).split('->')[-1], str()
     word = list(text)
-    for letter in word:
-        text_out += letter
-        try:
-            if word.index(letter) % 2 == 1:
-                await message.edit(f'`{text_out}`|')
-            else:
-                await message.edit(f'`{text_out}`')
-            await asyncio.sleep(0.2)
-        except errors.MessageNotModifiedError:
-            continue
+    with suppress(Exception):
+        for letter in word:
+            text_out += letter
+            try:
+                if word.index(letter) % 2 == 1:
+                    await message.edit(f'`{text_out}`|')
+                else:
+                    await message.edit(f'`{text_out}`')
+                await asyncio.sleep(0.2)
+            except errors.MessageNotModifiedError:
+                continue
 
 
 @client.on(events.NewMessage(incoming=True))
