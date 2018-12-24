@@ -9,16 +9,26 @@ from telethon.tl.types import UpdateDraftMessage
 from proxy import mediatube_proxy
 from supported_langs import supported_langs
 import secret
+import getopt
 import re
+import sys
 
-client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=mediatube_proxy).start()
+default_proxy = None
+try:
+    opts, args = getopt.getopt(sys.argv[1:], 'p', ['proxy'])
+    for opt, arg in opts:
+        if opt in ('-p', '--proxy'):
+            default_proxy = mediatube_proxy
+except getopt.GetoptError:
+    sys.exit(2)
+
+client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=default_proxy).start()
 last_msg = None
 break_time = None
 last_msg_time = time()
 MERGE_TIMEOUT = 30
 merge_semaphore = asyncio.Semaphore(value=1)
 draft_semaphore = asyncio.Semaphore(value=1)
-
 
 
 async def run_command_shell(cmd, e):
@@ -197,4 +207,3 @@ final_credits = ["OpenTFD is running", "Do not close this window", "t.me/mediatu
 print('\n'.join(final_credits))
 print('\n'.join([f'{k:<25}/{v}' for k, v in supported_langs.items()]))
 client.run_until_disconnected()
-
