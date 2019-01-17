@@ -102,9 +102,12 @@ async def translator(event: events.NewMessage.Event):
                 if text.endswith('/{0}'.format(lang_code)):
                     translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
                     for i in range(3):
-                        await draft.set_message(text=translated)
-                        await asyncio.sleep(7)
-                    return
+                        try:
+                            await draft.set_message(text=translated)
+                            await asyncio.sleep(7)
+                            return
+                        except Exception as e:
+                            print(e)
     except Exception as e:
         print(e)
     finally:
