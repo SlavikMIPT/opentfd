@@ -10,7 +10,7 @@ Compiled versions is on [releases of this repo](https://github.com/mediatube/ope
 * opentfd.service - template of linux systemd service for 24/7 execution on VDS
 
 ### For non-compiled versions
-1. `pip3 install reqirements.txt`
+1. `pip3 install -r reqirements.txt`
 2. Add [API token and hash](https://core.telegram.org/api/obtaining_api_id) to secret.template.py and rename it to secret.py
 3. `python3 opentfd.py`
 
