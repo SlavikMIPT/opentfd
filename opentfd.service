@@ -2,7 +2,7 @@
 Description=Open-source Telegram Flood Daemon service
 [Service]
 WorkingDirectory=/home/<username>/opentfd
-ExecStart=/usr/bin/python3.6 /home/<username>/opentfd/main.py
+ExecStart=/usr/bin/python3.6 /home/<username>/opentfd/opentfd.py
 Restart=always
 RestartSec=10
 SyslogIdentifier=python-opentfd
