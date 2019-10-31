@@ -6,12 +6,19 @@ from contextlib import suppress
 import mtranslate
 from telethon import TelegramClient, events, sync, errors, custom
 from telethon.tl.types import UpdateDraftMessage
+from telethon.tl.types import SendMessageRecordRoundAction, SendMessageUploadRoundAction, SendMessageTypingAction
+
+from telethon.tl.functions.messages import SetTypingRequest
+from telethon.tl.types import DocumentAttributeFilename
+from telethon.tl.types import DocumentAttributeVideo
 from proxy import mediatube_proxy
 from supported_langs import supported_langs
 import secret
 import getopt
-import re
 import sys
+import os
+import io
+import animation
 
 default_proxy = None
 try:
@@ -21,7 +28,7 @@ try:
             default_proxy = mediatube_proxy
 except getopt.GetoptError:
     sys.exit(2)
-
+videotube_id = 599312585
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=default_proxy).start()
 last_msg = None
 break_time = None
@@ -29,6 +36,30 @@ last_msg_time = time()
 MERGE_TIMEOUT = 30
 merge_semaphore = asyncio.Semaphore(value=1)
 draft_semaphore = asyncio.Semaphore(value=1)
+
+
+async def send_video_note(event):
+    msg = event.message
+    try:
+        filename = msg.media.document.attributes[1].file_name
+    except Exception:
+        filename = 'video_noname.mp4'
+    chat = await event.get_chat()
+    replied_msg_id = None
+    if event.reply_to_msg_id:
+        replied_msg_id = event.reply_to_msg_id
+    await client(SetTypingRequest(chat, SendMessageRecordRoundAction()))
+    if not os.path.exists(filename):
+        filename = await client.download_media(event.message, file=filename)
+    await asyncio.sleep(0.5)
+    await event.delete()
+    document_attribute = [DocumentAttributeVideo(duration=0, w=260, h=260, round_message=True,
+                                                 supports_streaming=True),
+                          DocumentAttributeFilename(filename)]
+    await client.send_file(chat, filename, caption='',
+                           file_name=str(filename), allow_cache=False, part_size_kb=512,
+                           thumb=None, attributes=document_attribute, reply_to=replied_msg_id)
+    return
 
 
 async def run_command_shell(cmd, e):
@@ -49,9 +80,6 @@ async def run_command_shell(cmd, e):
         for i in range(lines_max):
             data = await process.stdout.readline()
             line = data.decode().strip()
-            # results = await process.communicate()
-            # for data in results:
-            #     line = data.decode().rstrip()
             if blank_lines_count <= 5:
                 if line == '':
                     blank_lines_count += 1
@@ -60,18 +88,10 @@ async def run_command_shell(cmd, e):
                     msg_lines.append(line)
             else:
                 break
-            #     if not await process.communicate():
-            #         break
-            #     else:
-            #         continue
-            # print(line)
         msg_lines = msg_lines[-lines_max:]
-        # if lines_count <= 10:
         msg_text = ''
         for ln in msg_lines:
             msg_text += f'`${ln}`\n'
-        # current_time = time()
-        # if current_time - last_update_time >= 1:
         with suppress(Exception):
             if not msg_text_old == msg_text:
                 await e.edit(msg_text, parse_mode='Markdown')
@@ -84,8 +104,16 @@ async def run_command_shell(cmd, e):
     msg_text += 'Open-source [telegram shell](https://github.com/mediatube/opentfd)'
     await e.edit(msg_text)
     return await process.kill()
-    # results = await process.communicate()
-    # return ''.join(x.decode() for x in results)
+
+
+@client.on(events.NewMessage(pattern=r'^!zen.*', outgoing=True))
+async def send_python_zen(event):
+    with io.open('zen.txt', 'r', encoding='utf-8') as zen_fp:
+        text = ''.join(zen_fp.readlines())
+        await asyncio.sleep(0.5)
+        await client(SetTypingRequest(event.input_chat, SendMessageTypingAction()))
+        await asyncio.sleep(2.5)
+        await event.reply(text, parse_mode='Markdown')
 
 
 @client.on(events.Raw(types=UpdateDraftMessage))
@@ -102,9 +130,12 @@ async def translator(event: events.NewMessage.Event):
                 if text.endswith('/{0}'.format(lang_code)):
                     translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
                     for i in range(3):
-                        await draft.set_message(text=translated)
-                        await asyncio.sleep(7)
-                    return
+                        try:
+                            await draft.set_message(text=translated)
+                            await asyncio.sleep(7)
+                            return
+                        except Exception as e:
+                            print(e)
     except Exception as e:
         print(e)
     finally:
@@ -126,6 +157,23 @@ async def typing_imitate(message: events.NewMessage.Event):
                 await asyncio.sleep(0.2)
             except errors.MessageNotModifiedError:
                 continue
+    raise events.StopPropagation
+
+
+@client.on(events.NewMessage(pattern=r'^!an.*', outgoing=True))
+async def typing_imitate(message: events.NewMessage.Event):
+    with suppress(Exception):
+        for i in range(2):
+            for frame in animation.frames:
+                text_out = f'`{frame}`'
+                try:
+                    await message.edit(text_out)
+                    await asyncio.sleep(0.5)
+                except errors.MessageNotModifiedError:
+                    continue
+        await asyncio.sleep(5)
+        await message.delete()
+    raise events.StopPropagation
 
 
 @client.on(events.NewMessage(incoming=True))
@@ -155,6 +203,7 @@ async def bash(e: events.NewMessage.Event):
         await asyncio.wait_for(run_command_shell(cmd, e), timeout=60.0)
     except asyncio.TimeoutError:
         print('timeout!')
+    raise events.StopPropagation
 
 
 @client.on(events.NewMessage(outgoing=True))
@@ -176,6 +225,9 @@ async def merger(event: custom.Message):
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
+            if event.media and event.via_bot_id == videotube_id:
+                with suppress(Exception):
+                    await asyncio.wait_for(send_video_note(event), timeout=60.0)
         elif last_msg is None:
             last_msg = event
         elif last_msg.to_id == event.to_id:
@@ -206,4 +258,7 @@ final_credits = ["OpenTFD is running", "Do not close this window", "t.me/mediatu
 
 print('\n'.join(final_credits))
 print('\n'.join([f'{k:<25}/{v}' for k, v in supported_langs.items()]))
-client.run_until_disconnected()
+try:
+    client.run_until_disconnected()
+finally:
+    client.close()
