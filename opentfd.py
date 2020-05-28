@@ -1,5 +1,5 @@
 import asyncio
-from datetime import timedelta
+from datetime import datetime, timedelta
 from time import time, sleep
 from contextlib import suppress
 
@@ -7,7 +7,9 @@ import mtranslate
 from telethon import TelegramClient, events, sync, errors, custom
 from telethon.tl.types import UpdateDraftMessage
 from telethon.tl.types import SendMessageRecordRoundAction, SendMessageUploadRoundAction, SendMessageTypingAction
-
+from telethon.tl.functions.channels import EditBannedRequest
+from telethon.tl.types import ChatBannedRights
+from telethon.utils import pack_bot_file_id
 from telethon.tl.functions.messages import SetTypingRequest
 from telethon.tl.types import DocumentAttributeFilename
 from telethon.tl.types import DocumentAttributeVideo
@@ -28,7 +30,7 @@ try:
             default_proxy = mediatube_proxy
 except getopt.GetoptError:
     sys.exit(2)
-videotube_id = 599312585
+VIDEOTUBEBOT_ID = 599312585
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=default_proxy).start()
 last_msg = None
 break_time = None
@@ -56,8 +58,8 @@ async def send_video_note(event):
     document_attribute = [DocumentAttributeVideo(duration=0, w=260, h=260, round_message=True,
                                                  supports_streaming=True),
                           DocumentAttributeFilename(filename)]
-    await client.send_file(chat, filename, caption='',
-                           file_name=str(filename), allow_cache=False, part_size_kb=512,
+    result = await client.send_file(chat, filename, caption='',
+                           file_name=str(filename), allow_cache=True, supports_streaming=True, part_size_kb=512,
                            thumb=None, attributes=document_attribute, reply_to=replied_msg_id)
     return
 
@@ -68,8 +70,8 @@ async def run_command_shell(cmd, e):
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE
     )
-    msg_text = ''
-    msg_text_old = ''
+    msg_text = f'{cmd}\n'
+    msg_text_old = f'{cmd}\n'
     blank_lines_count = 0
     lines_max = 20
     last_update_time = 0
@@ -77,23 +79,23 @@ async def run_command_shell(cmd, e):
     msg_lines = []
     await asyncio.sleep(1)
     while time() - start_time <= 60:
-        for i in range(lines_max):
+        for _ in range(lines_max):
             data = await process.stdout.readline()
             line = data.decode().strip()
             if blank_lines_count <= 5:
                 if line == '':
                     blank_lines_count += 1
-                if not line == '':
+                if line != '':
                     blank_lines_count = 0
                     msg_lines.append(line)
             else:
                 break
         msg_lines = msg_lines[-lines_max:]
-        msg_text = ''
+        msg_text = f'{cmd}\n'
         for ln in msg_lines:
             msg_text += f'`${ln}`\n'
         with suppress(Exception):
-            if not msg_text_old == msg_text:
+            if msg_text_old != msg_text:
                 await e.edit(msg_text, parse_mode='Markdown')
                 msg_text_old = msg_text
         await asyncio.sleep(5)
@@ -129,7 +131,7 @@ async def translator(event: events.NewMessage.Event):
             for lang_code in supported_langs.values():
                 if text.endswith('/{0}'.format(lang_code)):
                     translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
-                    for i in range(3):
+                    for _ in range(3):
                         try:
                             await draft.set_message(text=translated)
                             await asyncio.sleep(7)
@@ -159,11 +161,51 @@ async def typing_imitate(message: events.NewMessage.Event):
                 continue
     raise events.StopPropagation
 
+@client.on(events.NewMessage(pattern=r'^!scan', outgoing=True))
+async def scan_chat(message: events.NewMessage.Event):
+    await client.get_participants(await message.get_chat())
+    raise events.StopPropagation
+
+@client.on(events.NewMessage(pattern=r'^!kick .*', outgoing=True))
+async def kick_users(message: events.NewMessage.Event):
+    id_list = str(message.raw_text).split(' ')[1:]
+    # await client.get_participants('MediaTube_chat')
+    with suppress(Exception):
+        chat = await client.get_entity('MediaTube_chat')
+        for user_id in id_list:
+            # The above is equivalent to
+            # rights = ChatBannedRights(
+            #     until_date=datetime.now() + timedelta(days=366),
+            #     send_media=True,
+            #     send_stickers=True,
+            #     send_gifs=True,
+            #     send_games=True,
+            #     send_inline=True,
+            #     embed_links=True
+            # )
+            try:
+
+                user = await client.get_input_entity(int(user_id))
+                print(id, chat, user)
+                # res = await client(EditBannedRequest(chat, user, rights))
+                res = await client(EditBannedRequest(
+                    chat, user, ChatBannedRights(
+                        until_date=None,
+                        view_messages=True
+                    )
+                ))
+                print(res)
+            except Exception as e:
+                print(e)
+            finally:
+                await asyncio.sleep(0.5)
+    raise events.StopPropagation
+
 
 @client.on(events.NewMessage(pattern=r'^!an.*', outgoing=True))
 async def typing_imitate(message: events.NewMessage.Event):
     with suppress(Exception):
-        for i in range(2):
+        for _ in range(2):
             for frame in animation.frames:
                 text_out = f'`{frame}`'
                 try:
@@ -181,9 +223,8 @@ async def break_updater(event: events.NewMessage.Event):
     global break_time
     global last_msg
     with suppress(Exception):
-        if event.chat:
-            if event.chat.bot:
-                return
+        if event.chat and event.chat.bot:
+            return
     if last_msg:
         try:
             if (event.message.to_id.user_id == last_msg.from_id and
@@ -215,17 +256,15 @@ async def merger(event: custom.Message):
 
     event_time = time()
     with suppress(Exception):
-        if event.text:
-            if event.text.startswith('!bash'):
-                return
+        if event.text and event.text.startswith('!bash'):
+            return
         with suppress(Exception):
-            if event.chat:
-                if event.chat.bot:
-                    return
+            if event.chat and event.chat.bot:
+                return
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
-            if event.media and event.via_bot_id == videotube_id:
+            if event.media and event.via_bot_id == VIDEOTUBEBOT_ID:
                 with suppress(Exception):
                     await asyncio.wait_for(send_video_note(event), timeout=60.0)
         elif last_msg is None:
@@ -237,13 +276,10 @@ async def merger(event: custom.Message):
                     last_msg_time = event_time
                     break_time = 0
             elif event_time - last_msg_time < MERGE_TIMEOUT:
-                try:
-                    await merge_semaphore.acquire()
+                async with merge_semaphore:
                     last_msg = await last_msg.edit('{0}\n{1}'.format(last_msg.text, event.text))
                     last_msg_time = event_time
                     await event.delete()
-                finally:
-                    merge_semaphore.release()
             else:
                 last_msg = event
                 last_msg_time = event_time
