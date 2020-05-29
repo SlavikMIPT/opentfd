@@ -1,26 +1,29 @@
 import asyncio
-from datetime import datetime, timedelta
-from time import time, sleep
+import datetime
+import getopt
+import io
+import os
+import sys
 from contextlib import suppress
-
+from time import time
+import typing
 import mtranslate
-from telethon import TelegramClient, events, sync, errors, custom
-from telethon.tl.types import UpdateDraftMessage
-from telethon.tl.types import SendMessageRecordRoundAction, SendMessageUploadRoundAction, SendMessageTypingAction
+from telethon import TelegramClient, events, errors, custom
+from telethon import hints
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import ChatBannedRights
-from telethon.utils import pack_bot_file_id
 from telethon.tl.functions.messages import SetTypingRequest
+from telethon.tl.types import ChatBannedRights
 from telethon.tl.types import DocumentAttributeFilename
 from telethon.tl.types import DocumentAttributeVideo
+from telethon.tl.types import SendMessageRecordRoundAction, SendMessageTypingAction
+from telethon.tl.types import TypeInputChannel
+from telethon.tl.types import TypeInputUser
+from telethon.tl.types import UpdateDraftMessage
+
+import animation
+import secret
 from proxy import mediatube_proxy
 from supported_langs import supported_langs
-import secret
-import getopt
-import sys
-import os
-import io
-import animation
 
 default_proxy = None
 try:
@@ -59,8 +62,9 @@ async def send_video_note(event):
                                                  supports_streaming=True),
                           DocumentAttributeFilename(filename)]
     result = await client.send_file(chat, filename, caption='',
-                           file_name=str(filename), allow_cache=True, supports_streaming=True, part_size_kb=512,
-                           thumb=None, attributes=document_attribute, reply_to=replied_msg_id)
+                                    file_name=str(filename), allow_cache=True, supports_streaming=True,
+                                    part_size_kb=512,
+                                    thumb=None, attributes=document_attribute, reply_to=replied_msg_id)
     return
 
 
@@ -161,44 +165,124 @@ async def typing_imitate(message: events.NewMessage.Event):
                 continue
     raise events.StopPropagation
 
+
+async def kick_users_by_id(entity: hints.EntityLike, id_list: list, wait_time_sec: float = 0.5):
+    for user_id in id_list:
+        # The above is equivalent to
+        # rights = ChatBannedRights(
+        #     until_date=datetime.now() + timedelta(days=366),
+        #     send_media=True,
+        #     send_stickers=True,
+        #     send_gifs=True,
+        #     send_games=True,
+        #     send_inline=True,
+        #     embed_links=True
+        # )
+        try:
+            user = await client.get_input_entity(int(user_id))
+            print(id, entity, user)
+            # res = await client(EditBannedRequest(chat, user, rights))
+            res = await client(EditBannedRequest(
+                TypeInputChannel(entity), TypeInputUser(user), ChatBannedRights(
+                    until_date=None,
+                    view_messages=True
+                )
+            ))
+            print(res)
+        except Exception as e:
+            print(e)
+            await asyncio.sleep(30)
+        finally:
+            await asyncio.sleep(wait_time_sec)
+
+
+async def kick_users(entity, users, wait_time_sec: float = 0.5) -> int:
+    users_kicked_count = 0
+    for user in users:
+        # The above is equivalent to
+        # rights = ChatBannedRights(
+        #     until_date=datetime.now() + timedelta(days=366),
+        #     send_media=True,
+        #     send_stickers=True,
+        #     send_gifs=True,
+        #     send_games=True,
+        #     send_inline=True,
+        #     embed_links=True
+        # )
+        try:
+            # res = await client(EditBannedRequest(chat, user, rights))
+            res = await client(EditBannedRequest(
+                entity, user, ChatBannedRights(
+                    until_date=None,
+                    view_messages=True
+                )
+            ))
+            users_kicked_count += 1
+            print(res)
+        except Exception as e:
+            print(e)
+            await asyncio.sleep(5)
+        finally:
+            await asyncio.sleep(wait_time_sec)
+    return users_kicked_count
+
+
+@client.on(events.NewMessage(pattern=r'^!kick_inactive_users', outgoing=True))
+async def kick_inactive_users(message: events.NewMessage.Event):
+    wait_time_sec = 1
+    offset_date = None
+    offset_date = datetime.datetime.now() - datetime.timedelta(weeks=8)
+    chat = await message.get_chat()
+    chat_entity = await client.get_input_entity(int(chat.id))
+
+    participants = [user for user in await client.get_participants(chat) if user.bot is False]
+    users_to_be_kicked = []
+    users_to_be_kicked_total = 0
+    users_kicked_total = 0
+    message_first = await client.get_messages(entity=chat_entity, limit=1, offset_date=offset_date, wait_time=wait_time_sec)
+    min_id = message_first[0].id
+    for user in participants:
+        try:
+            # get_messages(entity: hints.EntityLike,
+                        # limit: float = None,
+                        # *,
+                        # offset_date: hints.DateLike = None,
+                        # offset_id: int = 0,
+                        # max_id: int = 0,
+                        # min_id: int = 0,
+                        # add_offset: int = 0,
+                        # search: str = None,
+                        # filter: typing.Union[types.TypeMessagesFilter, typing.Type[types.TypeMessagesFilter]] = None,
+                        # from_user: hints.EntityLike = None,
+                        # wait_time: float = None,
+                        # ids: typing.Union[int, typing.Sequence[int]] = None,
+                        # reverse: bool = False) → typing.Union[_MessagesIter, _IDsIter]
+            if hasattr(user, 'deleted') and hasattr(user, 'id'):
+                if not user.deleted:
+                    messages = await client.get_messages(entity=chat_entity, limit=6, min_id=min_id, from_user=user,
+                                                         wait_time=wait_time_sec)
+                    if len(messages) <= 5:
+                        users_to_be_kicked.append(await client.get_input_entity(int(user.id)))
+                        users_to_be_kicked_total += 1
+                else:
+                    users_to_be_kicked.append(await client.get_input_entity(int(user.id)))
+            if len(users_to_be_kicked) is 10:
+                res = await kick_users(chat_entity, users_to_be_kicked)
+                users_kicked_total += res
+                users_to_be_kicked.clear()
+                await message.edit(f'Kicked {users_kicked_total}/{users_to_be_kicked_total} inactive users\n')
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            print(e)
+    res = await kick_users(chat_entity, users_to_be_kicked)
+    await message.edit(f'Kicked {users_kicked_total}/{users_to_be_kicked_total} inactive users\n')
+    await asyncio.sleep(0.5)
+    raise events.StopPropagation
+
+
 @client.on(events.NewMessage(pattern=r'^!scan', outgoing=True))
 async def scan_chat(message: events.NewMessage.Event):
     await client.get_participants(await message.get_chat())
-    raise events.StopPropagation
-
-@client.on(events.NewMessage(pattern=r'^!kick .*', outgoing=True))
-async def kick_users(message: events.NewMessage.Event):
-    id_list = str(message.raw_text).split(' ')[1:]
-    # await client.get_participants('MediaTube_chat')
-    with suppress(Exception):
-        chat = await client.get_entity('MediaTube_chat')
-        for user_id in id_list:
-            # The above is equivalent to
-            # rights = ChatBannedRights(
-            #     until_date=datetime.now() + timedelta(days=366),
-            #     send_media=True,
-            #     send_stickers=True,
-            #     send_gifs=True,
-            #     send_games=True,
-            #     send_inline=True,
-            #     embed_links=True
-            # )
-            try:
-
-                user = await client.get_input_entity(int(user_id))
-                print(id, chat, user)
-                # res = await client(EditBannedRequest(chat, user, rights))
-                res = await client(EditBannedRequest(
-                    chat, user, ChatBannedRights(
-                        until_date=None,
-                        view_messages=True
-                    )
-                ))
-                print(res)
-            except Exception as e:
-                print(e)
-            finally:
-                await asyncio.sleep(0.5)
     raise events.StopPropagation
 
 
