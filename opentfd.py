@@ -46,7 +46,7 @@ async def run_command_shell(cmd, e):
     msg_lines = []
     await asyncio.sleep(1)
     while time() - start_time <= 60:
-        for i in range(lines_max):
+        for _ in range(lines_max):
             data = await process.stdout.readline()
             line = data.decode().strip()
             # results = await process.communicate()
@@ -55,16 +55,16 @@ async def run_command_shell(cmd, e):
             if blank_lines_count <= 5:
                 if line == '':
                     blank_lines_count += 1
-                if not line == '':
+                if line != '':
                     blank_lines_count = 0
                     msg_lines.append(line)
             else:
                 break
-            #     if not await process.communicate():
-            #         break
-            #     else:
-            #         continue
-            # print(line)
+                    #     if not await process.communicate():
+                    #         break
+                    #     else:
+                    #         continue
+                    # print(line)
         msg_lines = msg_lines[-lines_max:]
         # if lines_count <= 10:
         msg_text = ''
@@ -73,7 +73,7 @@ async def run_command_shell(cmd, e):
         # current_time = time()
         # if current_time - last_update_time >= 1:
         with suppress(Exception):
-            if not msg_text_old == msg_text:
+            if msg_text_old != msg_text:
                 await e.edit(msg_text, parse_mode='Markdown')
                 msg_text_old = msg_text
         await asyncio.sleep(5)
@@ -101,7 +101,7 @@ async def translator(event: events.NewMessage.Event):
             for lang_code in supported_langs.values():
                 if text.endswith('/{0}'.format(lang_code)):
                     translated = mtranslate.translate(text[:-(len(lang_code) + 1)], lang_code, 'auto')
-                    for i in range(3):
+                    for _ in range(3):
                         try:
                             await draft.set_message(text=translated)
                             await asyncio.sleep(7)
@@ -136,9 +136,8 @@ async def break_updater(event: events.NewMessage.Event):
     global break_time
     global last_msg
     with suppress(Exception):
-        if event.chat:
-            if event.chat.bot:
-                return
+        if event.chat and event.chat.bot:
+            return
     if last_msg:
         try:
             if (event.message.to_id.user_id == last_msg.from_id and
@@ -169,13 +168,11 @@ async def merger(event: custom.Message):
 
     event_time = time()
     with suppress(Exception):
-        if event.text:
-            if event.text.startswith('!bash'):
-                return
+        if event.text and event.text.startswith('!bash'):
+            return
         with suppress(Exception):
-            if event.chat:
-                if event.chat.bot:
-                    return
+            if event.chat and event.chat.bot:
+                return
         if (event.media or event.fwd_from or event.via_bot_id or
                 event.reply_to_msg_id or event.reply_markup):
             last_msg = None
