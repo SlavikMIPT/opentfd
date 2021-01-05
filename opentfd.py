@@ -195,7 +195,7 @@ async def kick_users_by_id(entity: hints.EntityLike, id_list: list, wait_time_se
         finally:
             await asyncio.sleep(wait_time_sec)
 
-
+            
 async def kick_users(entity, users, wait_time_sec: float = 0.5) -> int:
     users_kicked_count = 0
     for user in users:
@@ -211,12 +211,9 @@ async def kick_users(entity, users, wait_time_sec: float = 0.5) -> int:
         # )
         try:
             # res = await client(EditBannedRequest(chat, user, rights))
-            res = await client(EditBannedRequest(
-                entity, user, ChatBannedRights(
-                    until_date=None,
-                    view_messages=True
-                )
-            ))
+            msg = await client.kick_participant(entity, user)
+            with suppress(Exception):
+                await msg.delete()
             users_kicked_count += 1
             print(res)
         except Exception as e:
