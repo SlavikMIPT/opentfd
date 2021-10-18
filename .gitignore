@@ -8,6 +8,7 @@ __pycache__/
 
 # Distribution / packaging
 .Python
+.idea
 build/
 develop-eggs/
 dist/
@@ -112,6 +113,7 @@ venv.bak/
 # from original:
 packed
 secret.py
+test.py
 
 opentfd-linux-noproxy
 opentfd-ubuntu-noproxy
