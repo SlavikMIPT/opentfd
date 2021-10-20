@@ -137,10 +137,11 @@ async def break_updater(event: events.NewMessage.Event):
         if event.chat:
             if event.chat.bot:
                 return
-    if last_msg:
-        if event.to_id == last_msg.to_id:
-            last_msg = None
-            last_msg_time = None
+    with suppress(Exception):
+        if last_msg:
+            if event.chat_id == last_msg.chat_id:
+                last_msg = None
+                last_msg_time = None
 
 
 @client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
