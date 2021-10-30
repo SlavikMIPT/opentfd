@@ -55,9 +55,7 @@ async def send_video_note(event):
     except Exception:
         filename = 'video_noname.mp4'
     chat = await event.get_chat()
-    replied_msg_id = None
-    if event.reply_to_msg_id:
-        replied_msg_id = event.reply_to_msg_id
+    replied_msg_id = event.reply_to_msg_id or None
     await client(SetTypingRequest(chat, SendMessageRecordRoundAction()))
     if not os.path.exists(filename):
         filename = await client.download_media(event.message, file=filename)
@@ -90,14 +88,13 @@ async def run_command_shell(cmd, e):
         for _ in range(lines_max):
             data = await process.stdout.readline()
             line = data.decode().strip()
-            if blank_lines_count <= 5:
-                if line == '':
-                    blank_lines_count += 1
-                if line != '':
-                    blank_lines_count = 0
-                    msg_lines.append(line)
-            else:
+            if blank_lines_count > 5:
                 break
+            if line == '':
+                blank_lines_count += 1
+            if line != '':
+                blank_lines_count = 0
+                msg_lines.append(line)
         msg_lines = msg_lines[-lines_max:]
         msg_text = f'{cmd}\n'
         for ln in msg_lines:
@@ -307,14 +304,12 @@ async def typing_imitate(message: events.NewMessage.Event):
 async def break_updater(event: events.NewMessage.Event):
     global last_msg, last_msg_time
     with suppress(Exception):
-        if event.chat:
-            if event.chat.bot:
-                return
+        if event.chat and event.chat.bot:
+            return
     with suppress(Exception):
-        if last_msg:
-            if event.chat_id == last_msg.chat_id:
-                last_msg = None
-                last_msg_time = None
+        if last_msg and event.chat_id == last_msg.chat_id:
+            last_msg = None
+            last_msg_time = None
 
 
 @client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
