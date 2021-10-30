@@ -25,6 +25,11 @@ import secret
 from proxy import mediatube_proxy
 from supported_langs import supported_langs
 
+import secret
+import getopt
+import re
+import sys
+
 default_proxy = None
 try:
     opts, args = getopt.getopt(sys.argv[1:], 'p', ['proxy'])
@@ -34,10 +39,10 @@ try:
 except getopt.GetoptError:
     sys.exit(2)
 VIDEOTUBEBOT_ID = 599312585
+
 client = TelegramClient('opentfd_session', secret.api_id, secret.api_hash, proxy=default_proxy).start()
 last_msg = None
-break_time = None
-last_msg_time = time()
+last_msg_time = None
 MERGE_TIMEOUT = 30
 merge_semaphore = asyncio.Semaphore(value=1)
 draft_semaphore = asyncio.Semaphore(value=1)
@@ -66,7 +71,6 @@ async def send_video_note(event):
                                     part_size_kb=512,
                                     thumb=None, attributes=document_attribute, reply_to=replied_msg_id)
     return
-
 
 async def run_command_shell(cmd, e):
     process = await asyncio.create_subprocess_shell(
@@ -301,19 +305,16 @@ async def typing_imitate(message: events.NewMessage.Event):
 
 @client.on(events.NewMessage(incoming=True))
 async def break_updater(event: events.NewMessage.Event):
-    global break_time
-    global last_msg
+    global last_msg, last_msg_time
     with suppress(Exception):
-        if event.chat and event.chat.bot:
-            return
-    if last_msg:
-        try:
-            if (event.message.to_id.user_id == last_msg.from_id and
-                    last_msg.to_id.user_id == event.message.sender_id):
-                break_time = time()
-        except Exception:
-            if event.to_id == last_msg.to_id:
-                break_time = time()
+        if event.chat:
+            if event.chat.bot:
+                return
+    with suppress(Exception):
+        if last_msg:
+            if event.chat_id == last_msg.chat_id:
+                last_msg = None
+                last_msg_time = None
 
 
 @client.on(events.NewMessage(pattern=r'^!bash (.+)', outgoing=True))
@@ -331,7 +332,6 @@ async def bash(e: events.NewMessage.Event):
 @client.on(events.NewMessage(outgoing=True))
 async def merger(event: custom.Message):
     global last_msg
-    global break_time
     global last_msg_time
     global merge_semaphore
 
@@ -350,17 +350,14 @@ async def merger(event: custom.Message):
                     await asyncio.wait_for(send_video_note(event), timeout=60.0)
         elif last_msg is None:
             last_msg = event
+            last_msg_time = event_time
         elif last_msg.to_id == event.to_id:
-            if break_time:
-                if break_time < event_time:
-                    last_msg = event
-                    last_msg_time = event_time
-                    break_time = 0
-            elif event_time - last_msg_time < MERGE_TIMEOUT:
-                async with merge_semaphore:
-                    last_msg = await last_msg.edit('{0}\n{1}'.format(last_msg.text, event.text))
-                    last_msg_time = event_time
-                    await event.delete()
+            if event_time - last_msg_time < MERGE_TIMEOUT:
+               with suppress(Exception):
+                    async with merge_semaphore:
+                        last_msg = await last_msg.edit('{0}\n{1}'.format(last_msg.text, event.text))
+                        last_msg_time = event_time
+                        await event.delete()
             else:
                 last_msg = event
                 last_msg_time = event_time
